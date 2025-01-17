@@ -1,5 +1,4 @@
 // Importer les modules nécessaires
-const { log } = require('console');
 const fs = require('fs');
 const path = require('path');
 
@@ -15,9 +14,14 @@ const extensionsVideos = ['.mp4', '.avi', '.mov', '.mkv'];
 
 // Fonction pour extraire une date au format AAAAMMJJ
 const extraireDate = (nomFichier) => {
-    const regex = /(?:\D|^)(\d{4})(\d{2})(\d{2})(?:\D|$)/; // Regex pour extraire une date AAAAMMJJ
+    const regex = /(?:\D|^)(\d{4})(\d{2})(\d{2})(?:\D|$)|(?:^|\D)(\d{4})-(\d{2})-(\d{2})(?:\D|$)/; // Regex pour extraire une date AAAAMMJJ ou 2013-12-06
     const match = nomFichier.match(regex);
-    return match ? `${match[1]}${match[2]}${match[3]}` : null;
+    if (match) {
+        return match[1] && match[2] && match[3]
+            ? `${match[1]}${match[2]}${match[3]}`
+            : `${match[4]}${match[5]}${match[6]}`;
+    }
+    return null;
 };
 
 // Créer les dossiers de destination si nécessaire
@@ -61,12 +65,13 @@ fs.readdir(dossierSource, (err, fichiers) => {
                 const date = extraireDate(fichier);
 
                 if (date) {
+                    const timestamp = Date.now();
                     if (extensionsImages.includes(extension)) {
-                        // Renommer et copier les images avec un compteur unique
+                        // Renommer et copier les images avec un compteur unique et timestamp
                         nomsUtilisesImages[date] = nomsUtilisesImages[date] || 0;
                         nomsUtilisesImages[date]++;
 
-                        const nouveauNom = `${date}_${nomsUtilisesImages[date]}${extension}`;
+                        const nouveauNom = `${date}_${nomsUtilisesImages[date]}_${timestamp}${extension}`;
                         const cheminDestination = path.join(dossierImages, nouveauNom);
 
                         fs.copyFile(cheminComplet, cheminDestination, (err) => {
@@ -79,11 +84,11 @@ fs.readdir(dossierSource, (err, fichiers) => {
                             }
                         });
                     } else if (extensionsVideos.includes(extension)) {
-                        // Renommer et copier les vidéos avec un compteur unique
+                        // Renommer et copier les vidéos avec un compteur unique et timestamp
                         nomsUtilisesVideos[date] = nomsUtilisesVideos[date] || 0;
                         nomsUtilisesVideos[date]++;
 
-                        const nouveauNom = `${date}_${nomsUtilisesVideos[date]}${extension}`;
+                        const nouveauNom = `${date}_${nomsUtilisesVideos[date]}_${timestamp}${extension}`;
                         const cheminDestination = path.join(dossierVideos, nouveauNom);
 
                         fs.copyFile(cheminComplet, cheminDestination, (err) => {
@@ -128,10 +133,10 @@ fs.readdir(dossierSource, (err, fichiers) => {
                 console.log("✅ Aucun fichier n'a rencontré d'erreur.");
             }
             if (aRenommerManuellement) {
-                console.log(`\n🚨🚨🚨 : ${aRenommerManuellement} fichiers à renommer manuellement`);
+                console.log(`🚨🚨🚨 À renommer manuellement : ${aRenommerManuellement} fichiers.`);
             } else {
-                console.log(`✅ Aucun fichier à renommer manuellement`);
-            }   
+                console.log(`✅ Aucun fichier à renommer manuellement.`);
+            }
             console.log("================================================");
         }
     }, 500);
