@@ -3,14 +3,14 @@ const fs = require('fs');
 const path = require('path');
 
 // Dossiers source et de destination
-const dossierSource = path.join(__dirname, '../bucket');
-const dossierImages = path.join(__dirname, '../renamed-images');
-const dossierVideos = path.join(__dirname, '../renamed-videos');
-const dossierManuel = path.join(__dirname, '../to-renamed-manually');
+const dossierSource = path.join(__dirname, '/bucket');
+const dossierImages = path.join(__dirname, '/renamed-images');
+const dossierVideos = path.join(__dirname, '/renamed-videos');
+const dossierManuel = path.join(__dirname, '/to-renamed-manually');
 
 // Extensions à gérer
 const extensionsImages = ['.jpg', '.jpeg', '.png', '.gif'];
-const extensionsVideos = ['.mp4', '.avi', '.mov', '.mkv'];
+const extensionsVideos = ['.mp4', '.avi', '.mov', '.mkv', '.3gp'];
 
 // Fonction pour extraire une date au format AAAAMMJJ
 const extraireDate = (nomFichier) => {
@@ -38,6 +38,11 @@ creerDossier(dossierManuel);
 let erreurs = 0;
 let succes = 0;
 let aRenommerManuellement = 0;
+let compteurManuel = 0; // Compteur unique pour les fichiers manuels
+
+// Lire l'option fournie lors de l'exécution du script
+const option = process.argv[2]; // Ex: 'low' pour ajouter _low_quality
+const suffixe = option === 'low' ? '_low_quality' : '';
 
 // Lire les fichiers dans le dossier source
 fs.readdir(dossierSource, (err, fichiers) => {
@@ -67,11 +72,11 @@ fs.readdir(dossierSource, (err, fichiers) => {
                 if (date) {
                     const timestamp = Date.now();
                     if (extensionsImages.includes(extension)) {
-                        // Renommer et copier les images avec un compteur unique et timestamp
+                        // Renommer et copier les images avec un compteur unique, timestamp et suffixe
                         nomsUtilisesImages[date] = nomsUtilisesImages[date] || 0;
                         nomsUtilisesImages[date]++;
 
-                        const nouveauNom = `${date}_${nomsUtilisesImages[date]}_${timestamp}${extension}`;
+                        const nouveauNom = `${date}_${nomsUtilisesImages[date]}_${timestamp}${suffixe}${extension}`;
                         const cheminDestination = path.join(dossierImages, nouveauNom);
 
                         fs.copyFile(cheminComplet, cheminDestination, (err) => {
@@ -84,11 +89,11 @@ fs.readdir(dossierSource, (err, fichiers) => {
                             }
                         });
                     } else if (extensionsVideos.includes(extension)) {
-                        // Renommer et copier les vidéos avec un compteur unique et timestamp
+                        // Renommer et copier les vidéos avec un compteur unique, timestamp et suffixe
                         nomsUtilisesVideos[date] = nomsUtilisesVideos[date] || 0;
                         nomsUtilisesVideos[date]++;
 
-                        const nouveauNom = `${date}_${nomsUtilisesVideos[date]}_${timestamp}${extension}`;
+                        const nouveauNom = `${date}_${nomsUtilisesVideos[date]}_${timestamp}${suffixe}${extension}`;
                         const cheminDestination = path.join(dossierVideos, nouveauNom);
 
                         fs.copyFile(cheminComplet, cheminDestination, (err) => {
@@ -104,15 +109,18 @@ fs.readdir(dossierSource, (err, fichiers) => {
                         console.log(`Fichier ignoré (ni image ni vidéo) : ${fichier}`);
                     }
                 } else {
-                    // Déplacer les fichiers sans date dans le dossier manuel
-                    const cheminDestination = path.join(dossierManuel, fichier);
+                    // Renommer et déplacer les fichiers sans date dans le dossier manuel
+                    compteurManuel++;
+                    const timestamp = Date.now();
+                    const nouveauNomManuel = `_manual_${compteurManuel}_${timestamp}${suffixe}${extension}`;
+                    const cheminDestination = path.join(dossierManuel, nouveauNomManuel);
 
                     fs.copyFile(cheminComplet, cheminDestination, (err) => {
                         if (err) {
                             console.error('Erreur lors du déplacement du fichier manuel :', err);
                             erreurs++;
                         } else {
-                            console.log(`Fichier déplacé pour renommage manuel : ${fichier}`);
+                            console.log(`Fichier déplacé et renommé manuellement : ${fichier} -> ${nouveauNomManuel}`);
                             aRenommerManuellement++;
                         }
                     });
