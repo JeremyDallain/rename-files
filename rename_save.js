@@ -14,22 +14,12 @@ const extensionsVideos = ['.mp4', '.avi', '.mov', '.mkv', '.3gp'];
 
 // Fonction pour extraire une date au format AAAAMMJJ
 const extraireDate = (nomFichier) => {
-    const regex = /(?:\D|^)(\d{4})(\d{2})(\d{2})(?:\D|$)|(?:^|\D)(\d{4})-(\d{2})-(\d{2})(?:\D|$)/;
+    const regex = /(?:\D|^)(\d{4})(\d{2})(\d{2})(?:\D|$)|(?:^|\D)(\d{4})-(\d{2})-(\d{2})(?:\D|$)/; // Regex pour extraire une date AAAAMMJJ ou 2013-12-06
     const match = nomFichier.match(regex);
     if (match) {
-        return match[1] && match[2] && match[3] ? `${match[1]}${match[2]}${match[3]}` : `${match[4]}${match[5]}${match[6]}`;
-    }
-    return null;
-};
-
-// Fonction pour extraire un timestamp et le convertir en date AAAAMMJJ
-const extraireTimestamp = (nomFichier) => {
-    const regex = /(\d{10,13})/; // Recherche un timestamp Unix (secondes ou millisecondes)
-    const match = nomFichier.match(regex);
-    if (match) {
-        const timestamp = parseInt(match[1]);
-        const date = new Date(timestamp.toString().length === 13 ? timestamp : timestamp * 1000);
-        return date.toISOString().slice(0, 10).replace(/-/g, '');
+        return match[1] && match[2] && match[3]
+            ? `${match[1]}${match[2]}${match[3]}`
+            : `${match[4]}${match[5]}${match[6]}`;
     }
     return null;
 };
@@ -48,10 +38,10 @@ creerDossier(dossierManuel);
 let erreurs = 0;
 let succes = 0;
 let aRenommerManuellement = 0;
-let compteurManuel = 0;
+let compteurManuel = 0; // Compteur unique pour les fichiers manuels
 
 // Lire l'option fournie lors de l'exécution du script
-const option = process.argv[2];
+const option = process.argv[2]; // Ex: 'low' pour ajouter _low_quality
 const suffixe = option === 'low' ? '_low_quality' : '';
 
 // Lire les fichiers dans le dossier source
@@ -61,12 +51,13 @@ fs.readdir(dossierSource, (err, fichiers) => {
         return;
     }
 
-    const nomsUtilisesImages = {};
-    const nomsUtilisesVideos = {};
+    const nomsUtilisesImages = {}; // Suivi des noms utilisés pour chaque date (images)
+    const nomsUtilisesVideos = {}; // Suivi des noms utilisés pour chaque date (vidéos)
 
     fichiers.forEach((fichier) => {
         const cheminComplet = path.join(dossierSource, fichier);
 
+        // Vérifier que c'est bien un fichier
         fs.stat(cheminComplet, (err, stats) => {
             if (err) {
                 console.error('Erreur lors de l\'analyse du fichier :', err);
@@ -76,11 +67,12 @@ fs.readdir(dossierSource, (err, fichiers) => {
 
             if (stats.isFile()) {
                 const extension = path.extname(fichier).toLowerCase();
-                let date = extraireDate(fichier) || extraireTimestamp(fichier);
-                let timestamp = Date.now();
+                const date = extraireDate(fichier);
 
                 if (date) {
+                    const timestamp = Date.now();
                     if (extensionsImages.includes(extension)) {
+                        // Renommer et copier les images avec un compteur unique, timestamp et suffixe
                         nomsUtilisesImages[date] = nomsUtilisesImages[date] || 0;
                         nomsUtilisesImages[date]++;
 
@@ -97,6 +89,7 @@ fs.readdir(dossierSource, (err, fichiers) => {
                             }
                         });
                     } else if (extensionsVideos.includes(extension)) {
+                        // Renommer et copier les vidéos avec un compteur unique, timestamp et suffixe
                         nomsUtilisesVideos[date] = nomsUtilisesVideos[date] || 0;
                         nomsUtilisesVideos[date]++;
 
@@ -116,7 +109,9 @@ fs.readdir(dossierSource, (err, fichiers) => {
                         console.log(`Fichier ignoré (ni image ni vidéo) : ${fichier}`);
                     }
                 } else {
+                    // Renommer et déplacer les fichiers sans date dans le dossier manuel
                     compteurManuel++;
+                    const timestamp = Date.now();
                     const nouveauNomManuel = `_manual_${compteurManuel}_${timestamp}${suffixe}${extension}`;
                     const cheminDestination = path.join(dossierManuel, nouveauNomManuel);
 
@@ -133,4 +128,24 @@ fs.readdir(dossierSource, (err, fichiers) => {
             }
         });
     });
+
+    // Attendre que toutes les opérations soient terminées
+    const attente = setInterval(() => {
+        if (succes + erreurs + aRenommerManuellement === fichiers.length) {
+            clearInterval(attente);
+            console.log("\n================ Résultat final ================");
+            console.log(`✅ Succès : ${succes} fichiers copiés et renommés.`);
+            if (erreurs > 0) {
+                console.error(`🚨 Erreurs : ${erreurs} fichiers n'ont pas pu être copiés.`);
+            } else {
+                console.log("✅ Aucun fichier n'a rencontré d'erreur.");
+            }
+            if (aRenommerManuellement) {
+                console.log(`🚨🚨🚨 À renommer manuellement : ${aRenommerManuellement} fichiers.`);
+            } else {
+                console.log(`✅ Aucun fichier à renommer manuellement.`);
+            }
+            console.log("================================================");
+        }
+    }, 500);
 });
